@@ -7,6 +7,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
+// test to trigger CI
+
 // GetObjectTypeFromSchema returns a tftypes.Type that can wholy represent the schema input
 func GetObjectTypeFromSchema(schema *tfprotov5.Schema) tftypes.Type {
 	bm := map[string]tftypes.Type{}
