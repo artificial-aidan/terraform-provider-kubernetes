@@ -11,14 +11,25 @@ on:
     paths:
       - "manifest/**/*.go"
 jobs:
+  tf_version_list:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - id: tf_version_list
+      shell: bash
+      run: scripts/tfversions.sh
+    outputs:
+      version_matrix: ${{ steps.tf_version_list.outputs.matrix }}
   acceptance_tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        terraform_version:
-          - "0.14.10"
-          - "0.15.5"
-          - "1.0.3"
+        kubernetes_version:
+          - v1.21.2-k3s1
+          - v1.20.8-k3s1
+          - v1.19.12-k3s1
+          - v1.18.2-k3s1
+        terraform_version: ${{ fromJson(needs.tf_version_list.outputs.version_matrix) }}
     steps:
       - uses: actions/checkout@v2
       - name: Read go-version
@@ -30,13 +41,16 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: ${{ steps.go-version.outputs.content }}
-      - uses: engineerd/setup-kind@v0.5.0
+      - name: Setup k3s cluster 
+        uses: debianmaster/actions-k3s@master
+        id: k3s
         with:
-          version: "v0.11.1"
+          version: ${{ matrix.kubernetes_version }}
       - name: Build annotations webhook
         run: |
           docker build --rm -t tf-k8s-acc-webhook ./manifest/test/acceptance/testdata/ComputedFields/webhook/
-          kind load docker-image tf-k8s-acc-webhook
+          docker save --output tf-k8s-acc-webhook.tar tf-k8s-acc-webhook
+          k3s ctr images import ./tf-k8s-acc-webhook.tar
       - name: Run tests
         env:
           TF_ACC_TERRAFORM_VERSION: ${{ matrix.terraform_version }}
